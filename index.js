@@ -6,6 +6,8 @@ const morgan = require('morgan');
 const app = express()
 const cors = require('cors')
 
+app.use(express.static('dist'))
+
 app.use(cors())
 
 app.use(express.json())  // para acceder a los datos json-parser
@@ -106,7 +108,7 @@ app.get('/info', (request, response) => {
     response.json(person)
   })
 
-
 const PORT = process.env.PORT || 3001
-app.listen(PORT) //enlazan el servidor http asignado a la variable app, para escuchar las solicitudes HTTP enviadas al puerto 3001
-console.log(`Server running on port ${PORT}`)
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`)
+})

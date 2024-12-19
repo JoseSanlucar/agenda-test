@@ -1,10 +1,41 @@
 
 //servidor simple
 //const http = require('http')  //se importa el servidor web integrado a node
+require('dotenv').config()
 const express = require('express')
 const morgan = require('morgan');
 const app = express()
 const cors = require('cors')
+const Contact = require('./contact'); 
+
+const mongoose = require('mongoose')
+
+//const url = process.env.MONGODB_URI
+
+//console.log('connecting to', url)
+/*const password = process.argv[2]
+
+const url =
+  `mongodb+srv://ADMIN:${password}@agenda.bayg4.mongodb.net/?retryWrites=true&w=majority&appName=Agenda`
+*/
+
+mongoose.set('strictQuery',false)
+
+/*
+mongoose.connect(url)
+  .then(result => {
+    console.log('connected to MongoDB')
+  })
+  .catch(error => {
+    console.log('error connecting to MongoDB:', error.message)
+  })
+
+const contactSchema = new mongoose.Schema({
+  name: String,
+  number: String,
+})
+*/
+//const Contact = mongoose.model('Contact', contactSchema)
 
 app.use(express.static('dist'))
 
@@ -13,7 +44,7 @@ app.use(cors())
 app.use(express.json())  // para acceder a los datos json-parser
 
 app.use(morgan('tiny'));
-
+/*
 let persons = [
     { 
       "id": 1,
@@ -35,13 +66,13 @@ let persons = [
       "name": "Mary Poppendieck", 
       "number": "39-23-6423122"
     }
-]
+]*/
 
 /*
 const app = http.createServer((request, response) => {  //se crea el servidor web del modulo http
   response.writeHead(200, { 'Content-Type': 'application/json' }) //e registra un controlador de eventos en el servidor, que se llama cada vez que se realiza una solicitud HTTP a la dirección del servidor http://localhost:3001. regresa codigo 200 con la cabecera establecida en 'application/json'
   response.end(JSON.stringify(persons)) //devuelve la respeusta las personas en formato JSON
-})*/
+*/
 
 app.get('/info', (request, response) => {
     const numberOfPersons = persons.length; // Obtén el número de personas
@@ -53,7 +84,9 @@ app.get('/info', (request, response) => {
   })
   
   app.get('/api/persons', (request, response) => {
-    response.json(persons)
+    Contact.find({}).then(persons => {
+      response.json(persons)
+    })
   })
 
   app.get('/api/persons/:id', (request, response) => {  //Podemos definir parámetros para rutas en Express usando la sintaxis de dos puntos:
@@ -84,31 +117,36 @@ app.get('/info', (request, response) => {
         })
       }
 
-    const unique = persons.find(person => person.name === body.name)
+    /*const unique = persons.find(person => person.name === body.name)
     if (unique) {
       return response.status(400).json({ 
         error: 'name must be unique' 
       })
-    }
-
+    }*/
+/*
       let generateId;
     do {
         generateId = Math.floor(Math.random() * 100000);
     } while (persons.find(person => person.id === generateId));
+*/
 
-
-      const person = {
-        id: generateId,
+      const person = new Contact ({
+        //id: generateId,
         name: body.name,
         number: body.number,
-      }
+      })
 
-    persons = persons.concat(person)
-    console.log(person)
-    response.json(person)
+    person.save().then(savedPerson => {
+        response.json(savedPerson)
+      })
+
+    //persons = persons.concat(person)
+    //console.log(person)
+    //response.json(person)
   })
 
-const PORT = process.env.PORT || 3001
+
+const PORT = process.env.PORT
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`)
 })

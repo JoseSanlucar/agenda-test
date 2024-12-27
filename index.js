@@ -21,6 +21,7 @@ const url =
 
 mongoose.set('strictQuery',false)
 
+
 /*
 mongoose.connect(url)
   .then(result => {
@@ -73,7 +74,7 @@ const app = http.createServer((request, response) => {  //se crea el servidor we
   response.writeHead(200, { 'Content-Type': 'application/json' }) //e registra un controlador de eventos en el servidor, que se llama cada vez que se realiza una solicitud HTTP a la dirección del servidor http://localhost:3001. regresa codigo 200 con la cabecera establecida en 'application/json'
   response.end(JSON.stringify(persons)) //devuelve la respeusta las personas en formato JSON
 */
-
+/*
 app.get('/info', (request, response) => {
     const numberOfPersons = persons.length; // Obtén el número de personas
     const currentTime = new Date(); // Obtén la hora actual
@@ -81,7 +82,20 @@ app.get('/info', (request, response) => {
         <p>Phonebook has info for ${numberOfPersons} persons</p>
         <p>${currentTime}</p>
     `);
-  })
+  })*/
+
+  app.get('/info', (request, response, next) => {
+    Contact.countDocuments({})
+      .then(count => {
+        const currentTime = new Date();
+        response.send(`
+          <p>Phonebook has info for ${count} persons</p>
+          <p>${currentTime}</p>
+        `);
+      })
+      .catch(error => next(error));
+  });
+  
   
   app.get('/api/persons', (request, response) => {
     Contact.find({}).then(persons => {
@@ -89,6 +103,7 @@ app.get('/info', (request, response) => {
     })
   })
 
+  /*
   app.get('/api/persons/:id', (request, response) => {  //Podemos definir parámetros para rutas en Express usando la sintaxis de dos puntos:
     //const id = request.params.id   //Se puede acceder al parámetro id en la ruta de una solicitud a través del objeto request:
     const id = Number(request.params.id) //se convierte a numero
@@ -98,16 +113,55 @@ app.get('/info', (request, response) => {
       } else { //en caso de que no encuentre la nota
         response.status(404).end()
       }
-  })
+  })*/
 
-  app.delete('/api/persons/:id', (request, response) => {  //borrar recursos
+      app.get('/api/persons/:id', (request, response, next) => {
+
+        const id = request.params.id;
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+          return response.status(400).send({ error: 'malformatted id' });
+        }
+
+        Contact.findById(request.params.id)
+          .then(person => {
+            if (person) {
+              response.json(person)
+            } else {
+              response.status(404).end()
+            }
+          })
+          .catch(error => next(error))
+      })
+
+  /*app.delete('/api/persons/:id', (request, response) => {  //borrar recursos
     const id = Number(request.params.id)
     persons = persons.filter(person => person.id !== id)
   
     response.status(204).end()
+  }) */
+
+  app.delete('/api/persons/:id', (request, response, next) => {
+    Contact.findByIdAndDelete(request.params.id)
+      .then(result => {
+        response.status(204).end()
+      })
+      .catch(error => next(error))
   })
 
-  app.post('/api/persons', (request, response) => {
+  app.put('/api/persons/:id', (request, response, next) => {
+      const { number } = request.body;
+  
+    Contact.findByIdAndUpdate(
+      request.params.id, 
+      { number }, 
+        { new: true, runValidators: true, context: 'query' })
+      .then(updatedPerson => {
+        response.json(updatedPerson)
+      })
+      .catch(error => next(error))
+  })
+
+  app.post('/api/persons', (request, response, next) => {
 
     const body = request.body;
 
@@ -138,13 +192,27 @@ app.get('/info', (request, response) => {
 
     person.save().then(savedPerson => {
         response.json(savedPerson)
-      })
+      }).catch(error => next(error))
 
     //persons = persons.concat(person)
     //console.log(person)
     //response.json(person)
   })
 
+  const errorHandler = (error, request, response, next) => {
+    console.error(error.message)
+  
+    if (error.name === 'CastError') {
+      return response.status(400).send({ error: 'malformatted id' })
+    } else if (error.name === 'ValidationError') {
+      return response.status(400).json({error: error.message})
+    }
+  
+    next(error)
+  }
+  
+  // este debe ser el último middleware cargado, ¡también todas las rutas deben ser registrada antes que esto!
+  app.use(errorHandler)
 
 const PORT = process.env.PORT
 app.listen(PORT, () => {

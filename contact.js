@@ -17,10 +17,26 @@ mongoose.connect(url)
     console.log('error connecting to MongoDB:', error.message)
   })
 
+  const phoneValidation = /^\d{2,3}-\d{5,}$/;
+
   const contactSchema = new mongoose.Schema({
-    name: String,
-    number: String,
-  })
+    name: {
+      type: String,
+      minlength: [3, 'Name must be at least 3 characters long'],
+      required: [true, 'Name is required']
+    },
+    number: {
+      type: String,
+      required: [true, 'Number is required'],
+      minLength: [8, 'Number must be at least 8 characters long'],
+      validate: {
+        validator: function (value) {
+          return phoneValidation.test(value);
+        },
+        message: (props) => `${props.value} is not a valid phone number! It must match the format XX-XXXXX or XXX-XXXXX.`,
+      },
+    },
+  });
 
 contactSchema.set('toJSON', {
   transform: (document, returnedObject) => {
